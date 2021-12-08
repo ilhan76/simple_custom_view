@@ -3,6 +3,7 @@ package com.kudashov.customview
 import android.content.Context
 import android.graphics.*
 import android.util.AttributeSet
+import android.util.Log
 import android.view.MotionEvent
 import android.view.View
 import android.widget.Toast
@@ -22,6 +23,8 @@ class SimpleCustomView @JvmOverloads constructor(
 
     private val bgPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val figurePaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val bitmapPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+
     private val viewRect = Rect()
     private lateinit var resBitmap: Bitmap
     private val listFigures: MutableList<Bitmap> = ArrayList()
@@ -33,6 +36,7 @@ class SimpleCustomView @JvmOverloads constructor(
                 R.styleable.SimpleCustomView_scv_background_color,
                 Color.WHITE
             )
+            typedArray.recycle()
         }
         setup()
     }
@@ -56,15 +60,17 @@ class SimpleCustomView @JvmOverloads constructor(
 
     override fun onTouchEvent(event: MotionEvent?): Boolean {
         if (event != null) {
-            val x = event.x
-            val y = event.y
-            val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-            val canvas = Canvas(bitmap)
-            canvas.drawRect(x, y, 50f, 50f, figurePaint)
-            listFigures.add(bitmap.copy(Bitmap.Config.ARGB_8888, true))
-            prepareBitmaps(width, height)
+            when (event.action){
+                MotionEvent.ACTION_DOWN ->{
+                    val x = event.x
+                    val y = event.y
 
-            Toast.makeText(context, "$x ||| $y", Toast.LENGTH_SHORT).show()
+                    listFigures.add(createFigureBitmap(x, y))
+                    prepareBitmaps(viewRect.right, viewRect.bottom)
+
+                    Toast.makeText(context, "$x ||| $y", Toast.LENGTH_SHORT).show()
+                }
+            }
         }
         return false
     }
@@ -74,10 +80,12 @@ class SimpleCustomView @JvmOverloads constructor(
             color = bgColor
             style = Paint.Style.FILL
         }
-
         with(figurePaint) {
             color = Color.GREEN
             style = Paint.Style.FILL
+        }
+        with(bitmapPaint) {
+            xfermode = PorterDuffXfermode(PorterDuff.Mode.DST_OVER)
         }
     }
 
@@ -85,19 +93,40 @@ class SimpleCustomView @JvmOverloads constructor(
         val bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
 
-        //bgPaint.xfermode = PorterDuffXfermode(PorterDuff.Mode.ADD)
-        canvas.drawRect(viewRect, bgPaint)
-        canvas.drawRect(50f, 50f, 50f, 50f, figurePaint)
+        canvas.drawBitmap(
+            prepareBackgroundBitmap(w, h),
+            0f,
+            0f,
+            null
+        )
 
-        for (bm in listFigures){
+        canvas.drawBitmap(createFigureBitmap(10f, 100f), viewRect, viewRect, null)
+        canvas.drawBitmap(createFigureBitmap(50f, 150f), viewRect, viewRect, null)
+        canvas.drawBitmap(createFigureBitmap(150f, 100f), viewRect, viewRect, null)
+        canvas.drawBitmap(createFigureBitmap(150f, 300f), viewRect, viewRect, null)
+
+        Log.d("TAG", "prepareBitmaps: $listFigures")
+        for (bm in listFigures) {
             canvas.drawBitmap(bm, viewRect, viewRect, null)
         }
-        Toast.makeText(context, "${listFigures.size}", Toast.LENGTH_SHORT).show()
-/*        val fbm = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
-        val fc = Canvas(fbm)
-        fc.drawRect(50f, 50f, 50f, 50f, paint)
-        canvas.drawBitmap(fbm, null, viewRect, paint)*/
 
         resBitmap = bitmap.copy(Bitmap.Config.ARGB_8888, true)
+    }
+
+    private fun prepareBackgroundBitmap(w: Int, h: Int): Bitmap {
+        val bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+
+        canvas.drawRect(viewRect, bgPaint)
+
+        return bitmap.copy(Bitmap.Config.ARGB_8888, true)
+    }
+
+    private fun createFigureBitmap(x: Float, y: Float): Bitmap {
+        val figureBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        val figureCanvas = Canvas(figureBitmap)
+        figureCanvas.drawRect(x, y, x + 50f, y + 50f, figurePaint)
+
+        return figureBitmap.copy(Bitmap.Config.ARGB_8888, true)
     }
 }
