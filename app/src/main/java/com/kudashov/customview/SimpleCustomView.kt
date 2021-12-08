@@ -8,6 +8,8 @@ import android.view.MotionEvent
 import android.view.View
 import android.widget.Toast
 import androidx.annotation.ColorInt
+import kotlin.math.max
+import kotlin.random.Random
 
 class SimpleCustomView @JvmOverloads constructor(
     context: Context,
@@ -16,18 +18,33 @@ class SimpleCustomView @JvmOverloads constructor(
 ) : View(context, attr, defStyleAttr) {
 
     @ColorInt
-    private val listColors: MutableList<Int> = listOf(Color.GREEN) as MutableList<Int>
+    private var listColors: List<Int> = listOf(
+        Color.GREEN,
+        Color.RED,
+        Color.YELLOW
+    ) as MutableList<Int>
+
+    @ColorInt
+    private val defaultFigureColor: Int = Color.GREEN
 
     @ColorInt
     private var bgColor: Int = Color.WHITE
 
     private val bgPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val figurePaint = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val bitmapPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG)
 
     private val viewRect = Rect()
     private lateinit var resBitmap: Bitmap
+
     private val listFigures: MutableList<Bitmap> = ArrayList()
+    private val listFigureType: List<FigureType> = listOf(
+        FigureType.CIRCLE, FigureType.RECT, FigureType.ROUND_RECT
+    )
+
+    private enum class FigureType {
+        CIRCLE, RECT, ROUND_RECT
+    }
 
     init {
         if (attr != null) {
@@ -39,6 +56,19 @@ class SimpleCustomView @JvmOverloads constructor(
             typedArray.recycle()
         }
         setup()
+    }
+
+    @JvmName("setFiguresColorsInt")
+    fun setFiguresColors(list: List<Int>) {
+        listColors = list
+    }
+
+    @JvmName("setFiguresColorsHex")
+    fun setFiguresColors(list: List<String>) {
+        listColors = list.map {
+            Log.d("TAG", "setFiguresColors: ${Color.parseColor(it)}")
+            Color.parseColor(it)
+        }
     }
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
@@ -60,18 +90,15 @@ class SimpleCustomView @JvmOverloads constructor(
 
     override fun onTouchEvent(event: MotionEvent?): Boolean {
         if (event != null) {
-            when (event.action){
-                MotionEvent.ACTION_DOWN ->{
-                    val x = event.x
-                    val y = event.y
-
-                    listFigures.add(createFigureBitmap(x, y))
-                    prepareBitmaps(viewRect.right, viewRect.bottom)
-
-                    Toast.makeText(context, "$x ||| $y", Toast.LENGTH_SHORT).show()
-                }
+            if (listFigures.size < 10) {
+                listFigures.add(createRandomFigure(event.x, event.y))
+            } else {
+                listFigures.clear()
+                Toast.makeText(context, "Game over", Toast.LENGTH_SHORT).show()
             }
         }
+        prepareBitmaps(viewRect.right, viewRect.bottom)
+        invalidate()
         return false
     }
 
@@ -81,11 +108,13 @@ class SimpleCustomView @JvmOverloads constructor(
             style = Paint.Style.FILL
         }
         with(figurePaint) {
-            color = Color.GREEN
+            color = defaultFigureColor
             style = Paint.Style.FILL
         }
-        with(bitmapPaint) {
-            xfermode = PorterDuffXfermode(PorterDuff.Mode.DST_OVER)
+        with(textPaint) {
+            color = Color.WHITE
+            style = Paint.Style.FILL
+            textSize = 50f
         }
     }
 
@@ -100,15 +129,16 @@ class SimpleCustomView @JvmOverloads constructor(
             null
         )
 
-        canvas.drawBitmap(createFigureBitmap(10f, 100f), viewRect, viewRect, null)
-        canvas.drawBitmap(createFigureBitmap(50f, 150f), viewRect, viewRect, null)
-        canvas.drawBitmap(createFigureBitmap(150f, 100f), viewRect, viewRect, null)
-        canvas.drawBitmap(createFigureBitmap(150f, 300f), viewRect, viewRect, null)
-
-        Log.d("TAG", "prepareBitmaps: $listFigures")
         for (bm in listFigures) {
             canvas.drawBitmap(bm, viewRect, viewRect, null)
         }
+
+        canvas.drawBitmap(
+            prepareTextBitmap(w, h),
+            0f,
+            0f,
+            null
+        )
 
         resBitmap = bitmap.copy(Bitmap.Config.ARGB_8888, true)
     }
@@ -122,10 +152,48 @@ class SimpleCustomView @JvmOverloads constructor(
         return bitmap.copy(Bitmap.Config.ARGB_8888, true)
     }
 
-    private fun createFigureBitmap(x: Float, y: Float): Bitmap {
+    private fun prepareTextBitmap(w: Int, h: Int): Bitmap {
+        val bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+
+        canvas.drawText("Количество фигур: ${listFigures.size}", 50f, 50f, textPaint)
+
+        return bitmap.copy(Bitmap.Config.ARGB_8888, true)
+    }
+
+    private fun createRandomFigure(x: Float, y: Float): Bitmap {
         val figureBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val figureCanvas = Canvas(figureBitmap)
-        figureCanvas.drawRect(x, y, x + 50f, y + 50f, figurePaint)
+        if (listColors.size != 0) {
+            figurePaint.color = listColors.random()
+        } else {
+            figurePaint.color = defaultFigureColor
+        }
+
+        val width = (20..100).random().toFloat()
+        val height = (20..100).random().toFloat()
+
+        when (listFigureType.random()) {
+            FigureType.CIRCLE -> figureCanvas.drawCircle(x, y, max(width, height), figurePaint)
+            FigureType.RECT -> figureCanvas.drawRect(
+                x - width / 2,
+                y - height / 2,
+                x + width / 2,
+                y + height / 2,
+                figurePaint
+            )
+            FigureType.ROUND_RECT -> figureCanvas.drawRoundRect(
+                RectF(
+                    x - width / 2,
+                    y - height / 2,
+                    x + width / 2,
+                    y + height / 2
+                ),
+                10f,
+                10f,
+                figurePaint
+            )
+        }
 
         return figureBitmap.copy(Bitmap.Config.ARGB_8888, true)
     }
