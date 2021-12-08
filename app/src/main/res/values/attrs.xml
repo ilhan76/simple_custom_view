@@ -2,5 +2,6 @@
 <resources>
     <declare-styleable name="SimpleCustomView">
         <attr name="scv_background_color" format="color"/>
+        <attr name="scv_default_figure_color" format="color"/>
     </declare-styleable>
 </resources>

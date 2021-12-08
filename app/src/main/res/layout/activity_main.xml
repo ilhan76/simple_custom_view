@@ -41,6 +41,7 @@
         android:id="@+id/custom_view"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        app:scv_default_figure_color="@color/teal_200"
         app:scv_background_color="@color/black" />
 
 </LinearLayout>

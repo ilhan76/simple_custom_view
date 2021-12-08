@@ -25,7 +25,7 @@ class SimpleCustomView @JvmOverloads constructor(
     ) as MutableList<Int>
 
     @ColorInt
-    private val defaultFigureColor: Int = Color.GREEN
+    private var defaultFigureColor: Int = Color.GREEN
 
     @ColorInt
     private var bgColor: Int = Color.WHITE
@@ -52,6 +52,10 @@ class SimpleCustomView @JvmOverloads constructor(
             bgColor = typedArray.getColor(
                 R.styleable.SimpleCustomView_scv_background_color,
                 Color.WHITE
+            )
+            defaultFigureColor = typedArray.getColor(
+                R.styleable.SimpleCustomView_scv_default_figure_color,
+                Color.GREEN
             )
             typedArray.recycle()
         }
